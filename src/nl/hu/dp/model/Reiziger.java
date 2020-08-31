@@ -7,6 +7,7 @@ public class Reiziger {
     private int id;
     private String voorletters, tussenvoegsel, achternaam;
     private Date geboortedatum;
+    private Adres adres;
 
     public Reiziger(int id, String voorletters, String tussenvoegsel, String achternaam, Date geboortedatum) {
         this.id = id;
@@ -14,6 +15,17 @@ public class Reiziger {
         this.tussenvoegsel = tussenvoegsel;
         this.achternaam = achternaam;
         this.geboortedatum = geboortedatum;
+    }
+
+    public Reiziger(int id, String voorletters, String tussenvoegsel, String achternaam, Date geboortedatum, Adres adres) {
+        this.id = id;
+        this.voorletters = voorletters;
+        this.tussenvoegsel = tussenvoegsel;
+        this.achternaam = achternaam;
+        this.geboortedatum = geboortedatum;
+
+        if (adres != null)
+            this.adres = adres;
     }
 
     public int getId() {
@@ -58,7 +70,18 @@ public class Reiziger {
 
     @Override
     public String toString() {
-        return String.format("Reiziger #%s: %s %s %s (%s)", id, voorletters, tussenvoegsel != null ? tussenvoegsel : "", achternaam, geboortedatum);
+        return String.format("Reiziger #%s: %s %s %s (%s) - %s", id, voorletters, tussenvoegsel != null ? tussenvoegsel : "", achternaam, geboortedatum, adres != null ? adres.toSurfaceString() : "no adress");
     }
 
+    public Adres getAdres() {
+        return adres;
+    }
+
+    public void setAdres(Adres adres) {
+        this.adres = adres;
+    }
+
+    public String toSurfaceString() {
+        return String.format("Reiziger #%s: %s %s %s (%s)", id, voorletters, tussenvoegsel != null ? tussenvoegsel : "", achternaam, geboortedatum);
+    }
 }

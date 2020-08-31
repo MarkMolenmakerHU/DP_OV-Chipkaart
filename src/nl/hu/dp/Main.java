@@ -1,8 +1,6 @@
 package nl.hu.dp;
 
-import nl.hu.dp.model.Reiziger;
-import nl.hu.dp.model.ReizigerDAO;
-import nl.hu.dp.model.ReizigerDAOPsql;
+import nl.hu.dp.model.*;
 
 import java.sql.*;
 import java.util.List;
@@ -22,6 +20,7 @@ public class Main {
 
             Connection connection = DriverManager.getConnection(url, properties);
             testReizigerDAO(new ReizigerDAOPsql(connection));
+            testAdresDAO(new AdresDAOPsql(connection), new ReizigerDAOPsql(connection));
             connection.close();
 
         } catch (SQLException throwables) {
@@ -88,6 +87,53 @@ public class Main {
         rdao.delete(sietske);
         reizigers = rdao.findAll();
         System.out.println(reizigers.size() + " reizigers\n");
+    }
+
+    private static void testAdresDAO(AdresDAO adao, ReizigerDAO rdao) throws SQLException {
+        System.out.println("\n---------- TestAdresDAO -------------");
+
+        // Haal alle reizigers op uit de database
+        List<Adres> adressen = adao.findAll();
+        System.out.println("[Test] AdresDAO.findAll() geeft de volgende adressen:");
+        for (Adres adres : adressen) {
+            System.out.println(adres);
+        }
+        System.out.println();
+
+        // Maak een nieuw adres aan en persisteer deze in de database
+        Reiziger bob = new Reiziger(10, "B", "", "Blokhout", Date.valueOf("2007-09-11"));
+        rdao.save(bob);
+        Adres javastraat = new Adres(13, "2805TD", "5", "javastraat", "New Jork", bob);
+        System.out.print("[Test] Eerst " + adressen.size() + " adressen, na AdresDAO.save() ");
+        adao.save(javastraat);
+        adressen = adao.findAll();
+        System.out.println(adressen.size() + " adressen\n");
+
+        // Find adres door id te specificeren
+        System.out.println("[Test] AdresDAO.findById() geeft het volgende adres:");
+        System.out.println(adao.findById(13));
+        System.out.println();
+
+        // Find adres door reiziger_id te specificeren
+        System.out.println("[Test] AdresDAO.findByReiziger() geeft het volgende adres:");
+        System.out.println(adao.findByReiziger(bob));
+        System.out.println();
+
+        // Update adres
+        System.out.println("[Test] Eerst \n" + adao.findById(13) + "\nNa AdresDAO.update():");
+        javastraat.setHuisnummer("1000");
+        javastraat.setPostcode("1000AB");
+        adao.update(javastraat);
+        System.out.println(adao.findById(13) + "\n");
+
+        // Delete adres
+        adressen = adao.findAll();
+        System.out.print("[Test] Eerst " + adressen.size() + " adressen, na AdresDAO.delete() ");
+        adao.delete(javastraat);
+        adressen = adao.findAll();
+        System.out.println(adressen.size() + " adressen\n");
+
+        rdao.delete(bob);
     }
 
 }

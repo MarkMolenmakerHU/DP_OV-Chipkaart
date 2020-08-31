@@ -94,7 +94,7 @@ public class ReizigerDAOPsql implements ReizigerDAO {
             geboortedatum = resultSet.getDate("geboortedatum");
 
             reiziger = new Reiziger(id, voorletters, tussenvoegsel, achternaam, geboortedatum);
-
+            new AdresDAOPsql(connection).findByReiziger(reiziger);
         }
 
         // Sluit alles
@@ -128,7 +128,9 @@ public class ReizigerDAOPsql implements ReizigerDAO {
             achternaam = resultSet.getString("achternaam");
             geboortedatum = resultSet.getDate("geboortedatum");
 
-            reizigers.add(new Reiziger(id, voorletters, tussenvoegsel, achternaam, geboortedatum));
+            Reiziger reiziger = new Reiziger(id, voorletters, tussenvoegsel, achternaam, geboortedatum);
+            new AdresDAOPsql(connection).findByReiziger(reiziger);
+            reizigers.add(reiziger);
 
         }
 
@@ -162,7 +164,9 @@ public class ReizigerDAOPsql implements ReizigerDAO {
             achternaam = resultSet.getString("achternaam");
             geboortedatum = resultSet.getDate("geboortedatum");
 
-            reizigers.add(new Reiziger(id, voorletters, tussenvoegsel, achternaam, geboortedatum));
+            Reiziger reiziger = new Reiziger(id, voorletters, tussenvoegsel, achternaam, geboortedatum);
+            new AdresDAOPsql(connection).findByReiziger(reiziger);
+            reizigers.add(reiziger);
 
         }
 

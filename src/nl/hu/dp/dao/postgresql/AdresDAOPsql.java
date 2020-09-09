@@ -1,4 +1,9 @@
-package nl.hu.dp.model;
+package nl.hu.dp.dao.postgresql;
+
+import nl.hu.dp.dao.AdresDAO;
+import nl.hu.dp.dao.ReizigerDAO;
+import nl.hu.dp.domain.Adres;
+import nl.hu.dp.domain.Reiziger;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,17 +14,17 @@ public class AdresDAOPsql implements AdresDAO {
     private Connection connection;
     private ReizigerDAO rdao;
 
-    public AdresDAOPsql(Connection connection) {
+    public AdresDAOPsql(Connection connection, ReizigerDAO rdao) {
         this.connection = connection;
-        this.rdao = new ReizigerDAOPsql(connection);
-    }
-
-    public ReizigerDAO getRdao() {
-        return rdao;
+        this.rdao = rdao;
     }
 
     @Override
-    public boolean save(Adres adres) throws SQLException{
+    public boolean save(Adres adres) throws SQLException {
+        // Save Reiziger if he doesn't exist
+        if (rdao.findById(adres.getReiziger().getId()) == null)
+            return rdao.save(adres.getReiziger());
+
         // SQL Query
         String query = "INSERT INTO adres (adres_id, straat, huisnummer, postcode, woonplaats, reiziger_id) VALUES (?, ?, ?, ?, ?, ?)";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
@@ -41,17 +46,15 @@ public class AdresDAOPsql implements AdresDAO {
     }
 
     @Override
-    public boolean update(Adres adres) throws SQLException{
+    public boolean update(Adres adres) throws SQLException {
         // SQL Query
-        String query = "UPDATE adres SET adres_id = ?, straat = ?, huisnummer = ?, postcode = ?, woonplaats = ?, reiziger_id = ? WHERE adres_id = ?;";
+        String query = "UPDATE adres SET straat = ?, huisnummer = ?, postcode = ?, woonplaats = ? WHERE adres_id = ?;";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
-        preparedStatement.setInt(1, adres.getId());
-        preparedStatement.setString(2, adres.getStraat());
-        preparedStatement.setString(3, adres.getHuisnummer());
-        preparedStatement.setString(4, adres.getPostcode());
-        preparedStatement.setString(5, adres.getWoonplaats());
-        preparedStatement.setInt(6, adres.getReiziger().getId());
-        preparedStatement.setInt(7, adres.getId());
+        preparedStatement.setString(1, adres.getStraat());
+        preparedStatement.setString(2, adres.getHuisnummer());
+        preparedStatement.setString(3, adres.getPostcode());
+        preparedStatement.setString(4, adres.getWoonplaats());
+        preparedStatement.setInt(5, adres.getId());
 
         // Query uitvoeren
         int affectedRows = preparedStatement.executeUpdate();

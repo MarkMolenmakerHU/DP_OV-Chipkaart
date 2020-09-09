@@ -1,4 +1,7 @@
-package nl.hu.dp.model;
+package nl.hu.dp.dao;
+
+import nl.hu.dp.domain.Adres;
+import nl.hu.dp.domain.Reiziger;
 
 import java.sql.SQLException;
 import java.util.List;

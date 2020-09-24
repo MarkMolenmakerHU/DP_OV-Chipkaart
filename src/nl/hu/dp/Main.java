@@ -2,14 +2,17 @@ package nl.hu.dp;
 
 import nl.hu.dp.dao.AdresDAO;
 import nl.hu.dp.dao.OVChipkaartDAO;
+import nl.hu.dp.dao.ProductDAO;
 import nl.hu.dp.dao.ReizigerDAO;
 import nl.hu.dp.dao.postgresql.AdresDAOPsql;
 import nl.hu.dp.dao.postgresql.OVChipkaartDAOPsql;
+import nl.hu.dp.dao.postgresql.ProductDAOPsql;
 import nl.hu.dp.dao.postgresql.ReizigerDAOPsql;
 import nl.hu.dp.domain.*;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -26,11 +29,16 @@ public class Main {
         try {
 
             Connection connection = DriverManager.getConnection(url, properties);
-            ReizigerDAO rdao = new ReizigerDAOPsql(connection);
+            ProductDAO pdao = new ProductDAOPsql(connection, new OVChipkaartDAOPsql(connection, new ReizigerDAOPsql(connection)));
 
-            testReizigerDAO(rdao);
-            testAdresDAO(new AdresDAOPsql(connection, rdao), rdao);
-            testOVChipkaartDAO(new OVChipkaartDAOPsql(connection, rdao), rdao);
+            List<Product> product = pdao.findAll();
+            System.out.println(product);
+
+//            ReizigerDAO rdao = new ReizigerDAOPsql(connection);
+//
+//            testReizigerDAO(rdao);
+//            testAdresDAO(new AdresDAOPsql(connection, rdao), rdao);
+//            testOVChipkaartDAO(new OVChipkaartDAOPsql(connection, rdao), rdao);
 
             connection.close();
 

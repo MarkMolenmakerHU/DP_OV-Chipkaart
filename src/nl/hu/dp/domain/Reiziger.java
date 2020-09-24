@@ -72,6 +72,7 @@ public class Reiziger {
     public void addOVChipkaart(OVChipkaart ovChipkaart) {
         ovChipkaarten.add(ovChipkaart);
     }
+    public void removeOVChipkaart(OVChipkaart ovChipkaart) { ovChipkaarten.remove(ovChipkaart); }
 
     // Other Methods
     public String getNaam() {

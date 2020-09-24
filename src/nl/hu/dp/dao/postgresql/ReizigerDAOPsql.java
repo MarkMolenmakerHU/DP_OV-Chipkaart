@@ -44,9 +44,8 @@ public class ReizigerDAOPsql implements ReizigerDAO {
             adao.save(reiziger.getAdres());
 
         // If Reiziger has OVChipkaarten, save them
-        if (reiziger.getOVChipkaarten().size() > 0)
-            for (OVChipkaart ovChipkaart : reiziger.getOVChipkaarten())
-                odao.save(ovChipkaart);
+        for (OVChipkaart ovChipkaart : reiziger.getOVChipkaarten())
+            odao.save(ovChipkaart);
 
         // Return
         return affectedRows > 0;

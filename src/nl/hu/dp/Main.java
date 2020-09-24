@@ -12,7 +12,6 @@ import nl.hu.dp.domain.*;
 
 import java.sql.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -34,9 +33,9 @@ public class Main {
             OVChipkaartDAO odao = new OVChipkaartDAOPsql(connection, rdao);
             ProductDAO pdao = new ProductDAOPsql(connection, odao);
 
-            //testReizigerDAO(rdao);
-            //testAdresDAO(adao, rdao);
-            //testOVChipkaartDAO(odao, rdao);
+            testReizigerDAO(rdao);
+            testAdresDAO(adao, rdao);
+            testOVChipkaartDAO(odao, rdao);
             testProductDAO(pdao, rdao, odao);
 
             connection.close();

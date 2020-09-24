@@ -1,7 +1,6 @@
 package nl.hu.dp.dao.postgresql;
 
 import nl.hu.dp.dao.OVChipkaartDAO;
-import nl.hu.dp.dao.ProductDAO;
 import nl.hu.dp.dao.ReizigerDAO;
 import nl.hu.dp.domain.OVChipkaart;
 import nl.hu.dp.domain.Product;

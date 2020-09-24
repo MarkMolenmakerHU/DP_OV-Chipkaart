@@ -42,6 +42,8 @@ public class ProductDAOPsql implements ProductDAO {
 
         // Save relatie met OVChipkaart
         for (OVChipkaart ovChipkaart : product.getOVChipkaarten()) {
+            if (odao.findByKaartNummer(ovChipkaart.getKaart_nummer()) == null)
+                odao.save(ovChipkaart);
 
             query = "INSERT INTO ov_chipkaart_product (kaart_nummer, product_nummer) VALUES (?, ?)";
             preparedStatement = connection.prepareStatement(query);
@@ -75,6 +77,9 @@ public class ProductDAOPsql implements ProductDAO {
 
         // Save de relaties met nieuwe OVChipkaarten
         for (OVChipkaart ovChipkaart : product.getOVChipkaarten()) {
+
+            // Update OVkaart
+            odao.update(ovChipkaart);
 
             // Select de relatie uit DB
             query = "SELECT * FROM ov_chipkaart_product WHERE product_nummer = ? AND kaart_nummer = ?";
@@ -116,7 +121,7 @@ public class ProductDAOPsql implements ProductDAO {
         int kaartnummer;
 
         while (resultSet.next()) {
-            kaartnummer = resultSet.getInt("product_nummer");
+            kaartnummer = resultSet.getInt("kaart_nummer");
 
             // Vergelijk alle kaartnummers
             boolean match = false;
@@ -156,13 +161,23 @@ public class ProductDAOPsql implements ProductDAO {
     @Override
     public boolean delete(Product product) throws SQLException{
         // SQL Query
-        String query = "DELETE FROM product WHERE product_nummer = ?;" +
-                "DELETE FROM ov_chipkaart_product WHERE product_nummer = ?;";
+        String query = "DELETE FROM ov_chipkaart_product WHERE product_nummer = ?;";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         preparedStatement.setInt(1, product.getProduct_nummer());
 
         // Query uitvoeren
         int affectedRows = preparedStatement.executeUpdate();
+
+        // Sluit alles
+        preparedStatement.close();
+
+        // SQL Query
+        query = "DELETE FROM product WHERE product_nummer = ?;";
+        preparedStatement = connection.prepareStatement(query);
+        preparedStatement.setInt(1, product.getProduct_nummer());
+
+        // Query uitvoeren
+        preparedStatement.executeUpdate();
 
         // Sluit alles
         preparedStatement.close();

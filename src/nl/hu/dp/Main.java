@@ -29,16 +29,15 @@ public class Main {
         try {
 
             Connection connection = DriverManager.getConnection(url, properties);
-            ProductDAO pdao = new ProductDAOPsql(connection, new OVChipkaartDAOPsql(connection, new ReizigerDAOPsql(connection)));
+            ReizigerDAO rdao = new ReizigerDAOPsql(connection);
+            AdresDAO adao = new AdresDAOPsql(connection, rdao);
+            OVChipkaartDAO odao = new OVChipkaartDAOPsql(connection, rdao);
+            ProductDAO pdao = new ProductDAOPsql(connection, odao);
 
-            List<Product> product = pdao.findAll();
-            System.out.println(product);
-
-//            ReizigerDAO rdao = new ReizigerDAOPsql(connection);
-//
-//            testReizigerDAO(rdao);
-//            testAdresDAO(new AdresDAOPsql(connection, rdao), rdao);
-//            testOVChipkaartDAO(new OVChipkaartDAOPsql(connection, rdao), rdao);
+            //testReizigerDAO(rdao);
+            //testAdresDAO(adao, rdao);
+            //testOVChipkaartDAO(odao, rdao);
+            testProductDAO(pdao, rdao, odao);
 
             connection.close();
 
@@ -247,6 +246,67 @@ public class Main {
 
         // Delete Reiziger
         rdao.delete(jack);
+    }
+
+    private static void testProductDAO(ProductDAO pdao, ReizigerDAO rdao, OVChipkaartDAO odao) throws SQLException {
+        System.out.println("\n---------- TestOVChipkaartDAO -------------");
+
+        // Haal alle OVChipkaarten op uit de database
+        List<Product> producten = pdao.findAll();
+        System.out.println("[Test] ProductDAO.findAll() geeft de volgende Producten:");
+        for (Product product : producten) {
+            System.out.println(product);
+        }
+        System.out.println();
+
+        // Persist een een nieuw product zonder OVkaart
+        System.out.println("[Test] Voor ProductDAO.save() eerst " + pdao.findAll().size() + " producten");
+        Product p1 = new Product(10, "Product10", "Test Product", 10);
+        pdao.save(p1);
+        System.out.println("[Test] Na ProductDAO.save() " + pdao.findAll().size() + " producten");
+        System.out.println();
+
+        // Delete product
+        System.out.println("[Test] Voor ProductDAO.delete() eerst " + pdao.findAll().size() + " producten");
+        pdao.delete(p1);
+        System.out.println("[Test] Na ProductDAO.delete() " + pdao.findAll().size() + " producten");
+        System.out.println();
+
+        // Persist een een nieuw product zonder OVkaart
+        System.out.println("[Test] Voor ProductDAO.save() eerst " + pdao.findAll().size() + " producten");
+        Product p2 = new Product(11, "Product11", "Test Product", 100);
+        Reiziger bob = new Reiziger(100, "B", "van", "Bob", LocalDate.now());
+        OVChipkaart ov2 = new OVChipkaart(1000, LocalDate.now(), 1, 10, bob);
+        p2.addOVChipkaart(ov2);
+        pdao.save(p2);  // Alleen de save in pdao
+        System.out.println("[Test] Na ProductDAO.save() " + pdao.findAll().size() + " producten");
+        System.out.println();
+
+        System.out.println("[Test] ProductDAO.findByID(), Result of p2 save:");
+        System.out.println(pdao.findById(11)); // Resultaat van p2 Save
+        System.out.println();
+
+        System.out.println("[Test] ProductDAO.findByOVChipkaart()");
+        System.out.println(pdao.findByOVChipkaart(ov2));
+        System.out.println();
+
+        // Update product
+        System.out.println("[Test] ProductDAO.update() before:");
+        System.out.println(pdao.findById(11));
+        System.out.println("[Test] ProductDAO.update() after:");
+        p2.setNaam("Nieuwe UPDATE naam");
+        ov2.setSaldo(666);
+        pdao.update(p2);
+        System.out.println(pdao.findById(11));
+        System.out.println();
+
+        // Delete product
+        System.out.println("[Test] Voor ProductDAO.delete() eerst " + pdao.findAll().size() + " producten");
+        pdao.delete(p2);
+        odao.delete(ov2);
+        rdao.delete(bob);
+        System.out.println("[Test] Na ProductDAO.delete() " + pdao.findAll().size() + " producten");
+        System.out.println();
     }
 
 }

@@ -1,8 +1,10 @@
 package nl.hu.dp.dao.postgresql;
 
 import nl.hu.dp.dao.OVChipkaartDAO;
+import nl.hu.dp.dao.ProductDAO;
 import nl.hu.dp.dao.ReizigerDAO;
 import nl.hu.dp.domain.OVChipkaart;
+import nl.hu.dp.domain.Product;
 import nl.hu.dp.domain.Reiziger;
 
 import java.sql.*;
@@ -40,6 +42,19 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
         // Sluit alles
         preparedStatement.close();
 
+        // Save relatie met Product
+        for (Product product : ovChipkaart.getProducten()) {
+
+            query = "INSERT INTO ov_chipkaart_product (kaart_nummer, product_nummer) VALUES (?, ?)";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, ovChipkaart.getKaart_nummer());
+            preparedStatement.setInt(2, product.getProduct_nummer());
+
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+
+        }
+
         // Return
         return affectedRows > 0;
     }
@@ -60,6 +75,82 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
         // Sluit alles
         preparedStatement.close();
 
+        // Save de relaties met nieuwe Producten
+        for (Product product : ovChipkaart.getProducten()) {
+
+            // Select de relatie uit DB
+            query = "SELECT * FROM ov_chipkaart_product WHERE product_nummer = ? AND kaart_nummer = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, product.getProduct_nummer());
+            preparedStatement.setInt(2, ovChipkaart.getKaart_nummer());
+
+            // Resultaten
+            ResultSet resultSet = preparedStatement.executeQuery();
+            boolean next = resultSet.next();
+
+            // Sluit alles
+            resultSet.close();
+            preparedStatement.close();
+
+            // Maak geen relatie aan als deze al bestaat
+            if (next)
+                continue;
+
+            // Persisteer relatie
+            query = "INSERT INTO ov_chipkaart_product (kaart_nummer, product_nummer) VALUES (?, ?)";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, ovChipkaart.getKaart_nummer());
+            preparedStatement.setInt(2, product.getProduct_nummer());
+
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+
+        }
+
+        // Verwijder de relaties met nietbestaande Producten
+        // Select alle relaties van deze kaart
+        query = "SELECT * FROM ov_chipkaart_product WHERE kaart_nummer = ?";
+        preparedStatement = connection.prepareStatement(query);
+        preparedStatement.setInt(1, ovChipkaart.getKaart_nummer());
+
+        // Resultaten
+        ResultSet resultSet = preparedStatement.executeQuery();
+        int productnummer;
+
+        while (resultSet.next()) {
+            productnummer = resultSet.getInt("product_nummer");
+
+            // Vergelijk alle kaartnummers
+            boolean match = false;
+            for (Product product : ovChipkaart.getProducten()) {
+                if (product.getProduct_nummer() == productnummer) {
+                    match = true;
+                    break;
+                }
+            }
+
+            // Als het nummer uit de DB geen nummer matched uit memory, moet de relatie uit de db gedelete worden
+            if (!match) {
+
+                // SQL Query
+                query = "DELETE FROM ov_chipkaart_product WHERE product_nummer = ?";
+                PreparedStatement preparedStatement2 = connection.prepareStatement(query);
+                preparedStatement2.setInt(1, productnummer);
+
+                // Query uitvoeren
+                preparedStatement2.executeUpdate();
+
+                // Sluit alles
+                preparedStatement2.close();
+
+            }
+
+        }
+
+        // Sluit alles
+        resultSet.close();
+        preparedStatement.close();
+
         // Return
         return affectedRows > 0;
     }
@@ -67,12 +158,23 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
     @Override
     public boolean delete(OVChipkaart ovChipkaart) throws SQLException {
         // SQL Query
-        String query = "DELETE FROM ov_chipkaart where kaart_nummer = ?;";
+        String query = "DELETE FROM ov_chipkaart_product WHERE kaart_nummer = ?;";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         preparedStatement.setInt(1, ovChipkaart.getKaart_nummer());
 
         // Query uitvoeren
         int affectedRows = preparedStatement.executeUpdate();
+
+        // Sluit alles
+        preparedStatement.close();
+
+        // SQL Query
+        query = "DELETE FROM ov_chipkaart where kaart_nummer = ?;";
+        preparedStatement = connection.prepareStatement(query);
+        preparedStatement.setInt(1, ovChipkaart.getKaart_nummer());
+
+        // Query uitvoeren
+        preparedStatement.executeUpdate();
 
         // Sluit alles
         preparedStatement.close();
@@ -84,7 +186,10 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
     @Override
     public OVChipkaart findByKaartNummer(int kaart_nummer) throws SQLException {
         // SQL Query
-        String query = "SELECT * FROM ov_chipkaart WHERE kaart_nummer = ?";
+        String query = "SELECT klasse, geldig_tot, saldo, reiziger_id, p.product_nummer AS product_nummer, naam, beschrijving, prijs " +
+                "FROM product p LEFT JOIN ov_chipkaart_product ocp on p.product_nummer = ocp.product_nummer " +
+                "LEFT JOIN ov_chipkaart o on o.kaart_nummer = ocp.kaart_nummer " +
+                "WHERE o.kaart_nummer = ?;";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         preparedStatement.setInt(1, kaart_nummer);
 
@@ -96,14 +201,30 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
         double saldo;
         OVChipkaart ovChipkaart = null;
 
+        int product_nummer;
+        String naam, beschrijving;
+        double prijs;
+        Product product;
+
         while (resultSet.next()) {
 
-            klasse = resultSet.getInt("klasse");
-            geldig_tot = resultSet.getDate("geldig_tot");
-            saldo = resultSet.getDouble("saldo");
-            reiziger_id = resultSet.getInt("reiziger_id");
+            // Als het de 1e result is, maak het ovkaart object
+            if (ovChipkaart == null) {
+                klasse = resultSet.getInt("klasse");
+                geldig_tot = resultSet.getDate("geldig_tot");
+                saldo = resultSet.getDouble("saldo");
+                reiziger_id = resultSet.getInt("reiziger_id");
+                ovChipkaart = new OVChipkaart(kaart_nummer, geldig_tot.toLocalDate(), klasse, saldo, rdao.findById(reiziger_id));
+            }
 
-            ovChipkaart = new OVChipkaart(kaart_nummer, geldig_tot.toLocalDate(), klasse, saldo, rdao.findById(reiziger_id));
+            // Voeg product toe
+            product_nummer = resultSet.getInt("product_nummer");
+            naam = resultSet.getString("naam");
+            beschrijving = resultSet.getString("beschrijving");
+            prijs = resultSet.getDouble("prijs");
+            product = new Product(product_nummer, naam, beschrijving, prijs);
+
+            ovChipkaart.addProduct(product);
 
         }
         // Sluit alles
@@ -117,7 +238,10 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
     @Override
     public List<OVChipkaart> findByReiziger(Reiziger reiziger) throws SQLException {
         // SQL Query
-        String query = "SELECT * FROM ov_chipkaart WHERE reiziger_id = ?";
+        String query = "SELECT klasse, geldig_tot, saldo, reiziger_id, p.product_nummer AS product_nummer, naam, beschrijving, prijs, o.kaart_nummer AS kaart_nummer " +
+                "FROM product p LEFT JOIN ov_chipkaart_product ocp on p.product_nummer = ocp.product_nummer " +
+                "LEFT JOIN ov_chipkaart o on o.kaart_nummer = ocp.kaart_nummer " +
+                "WHERE o.reiziger_id = ?;";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         preparedStatement.setInt(1, reiziger.getId());
 
@@ -129,6 +253,11 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
         double saldo;
         List<OVChipkaart> ovChipkaarten = new ArrayList<>();
 
+        int product_nummer;
+        String naam, beschrijving;
+        double prijs;
+        Product product;
+
         while (resultSet.next()) {
 
             kaart_nummer = resultSet.getInt("kaart_nummer");
@@ -137,7 +266,29 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
             saldo = resultSet.getDouble("saldo");
 
             OVChipkaart ovChipkaart = new OVChipkaart(kaart_nummer, geldig_tot.toLocalDate(), klasse, saldo, reiziger);
-            ovChipkaarten.add(ovChipkaart);
+
+            product_nummer = resultSet.getInt("product_nummer");
+            naam = resultSet.getString("naam");
+            beschrijving = resultSet.getString("beschrijving");
+            prijs = resultSet.getDouble("prijs");
+            product = new Product(product_nummer, naam, beschrijving, prijs);
+
+            // Check of kaart met deze key al in lijst zit, zo ja: voeg alle producten aan deze kaart toe
+            boolean contains = false;
+            for (OVChipkaart ovkaart : ovChipkaarten) {
+                if (ovChipkaart.getKaart_nummer() == ovChipkaart.getKaart_nummer()) {
+                    ovChipkaart = ovkaart;
+                    contains = true;
+                    break;
+                }
+            }
+
+            // Als kaart niet in lijst zit, voeg toe
+            if (!contains)
+                ovChipkaarten.add(ovChipkaart);
+
+            // Voeg product toe
+            ovChipkaart.addProduct(product);
 
         }
         // Sluit alles
@@ -151,16 +302,23 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
     @Override
     public List<OVChipkaart> findAll() throws SQLException {
         // SQL Query
-        String query = "SELECT * FROM ov_chipkaart";
+        String query = "SELECT p.product_nummer AS product_nummer, naam, beschrijving, prijs, o.kaart_nummer AS kaart_nummer, klasse, saldo, geldig_tot, reiziger_id " +
+                "FROM product p LEFT JOIN ov_chipkaart_product ocp on p.product_nummer = ocp.product_nummer " +
+                "INNER JOIN ov_chipkaart o on o.kaart_nummer = ocp.kaart_nummer ORDER BY product_nummer;";
         Statement statement = connection.createStatement();
 
         // Resultaten
         ResultSet resultSet = statement.executeQuery(query);
 
-        int reiziger_id, kaart_nummer, klasse;
+        int kaart_nummer, klasse, reiziger_id;
         Date geldig_tot;
         double saldo;
         List<OVChipkaart> ovChipkaarten = new ArrayList<>();
+
+        int product_nummer;
+        String naam, beschrijving;
+        double prijs;
+        Product product;
 
         while (resultSet.next()) {
 
@@ -171,7 +329,29 @@ public class OVChipkaartDAOPsql implements OVChipkaartDAO {
             reiziger_id = resultSet.getInt("reiziger_id");
 
             OVChipkaart ovChipkaart = new OVChipkaart(kaart_nummer, geldig_tot.toLocalDate(), klasse, saldo, rdao.findById(reiziger_id));
-            ovChipkaarten.add(ovChipkaart);
+
+            product_nummer = resultSet.getInt("product_nummer");
+            naam = resultSet.getString("naam");
+            beschrijving = resultSet.getString("beschrijving");
+            prijs = resultSet.getDouble("prijs");
+            product = new Product(product_nummer, naam, beschrijving, prijs);
+
+            // Check of kaart met deze key al in lijst zit, zo ja: voeg alle producten aan deze kaart toe
+            boolean contains = false;
+            for (OVChipkaart ovkaart : ovChipkaarten) {
+                if (ovChipkaart.getKaart_nummer() == ovChipkaart.getKaart_nummer()) {
+                    ovChipkaart = ovkaart;
+                    contains = true;
+                    break;
+                }
+            }
+
+            // Als kaart niet in lijst zit, voeg toe
+            if (!contains)
+                ovChipkaarten.add(ovChipkaart);
+
+            // Voeg product toe
+            ovChipkaart.addProduct(product);
 
         }
         // Sluit alles
